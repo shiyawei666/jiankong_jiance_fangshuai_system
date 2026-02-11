@@ -1,8 +1,44 @@
 import cv2
 from ultralytics import YOLO
+import os
+import sys
+from notification import NotificationManager
 
-# 1. 加载 YOLO11 姿态检测模型（首次运行会自动下载）
-model = YOLO('./yolo11l-pose.pt')
+# 获取应用程序路径
+def get_app_path():
+    # PyInstaller 打包后会设置 sys._MEIPASS 变量
+    if hasattr(sys, '_MEIPASS'):
+        return sys._MEIPASS
+    else:
+        return os.path.dirname(os.path.abspath(__file__))
+
+# 1. 加载 YOLO11 姿态检测模型
+app_path = get_app_path()
+model_path = os.path.join(app_path, 'yolo11l-pose.pt')
+print(f"正在加载模型: {model_path}")
+
+model = YOLO(model_path)
+
+# 2. 初始化通知管理器
+notifier = NotificationManager()
+
+# 加载通知配置
+try:
+    import config
+    notification_config = {
+        'feishu_webhook': getattr(config, 'feishu_webhook', None),
+        'wechat_webhook': getattr(config, 'wechat_webhook', None),
+        'sms_phone': getattr(config, 'sms_phone', None),
+        'sms_api_key': getattr(config, 'sms_api_key', None),
+        'email_to': getattr(config, 'email_to', None),
+        'email_from': getattr(config, 'email_from', None),
+        'email_password': getattr(config, 'email_password', None),
+        'smtp_server': getattr(config, 'smtp_server', 'smtp.qq.com')
+    }
+    print("通知配置已加载")
+except ImportError:
+    print("未找到 config.py，使用默认配置（无通知）")
+    notification_config = {}
 
 # 2. 尝试打开摄像头，支持多种后端
 print("正在尝试打开摄像头...")
@@ -67,6 +103,11 @@ while cap.isOpened():
                 if aspect_ratio > 1.2 or vertical_dist < (h * 0.3):
                     status = "FALL DETECTED!"
                     color = (0, 0, 255)  # 红色警告
+                    
+                    # 发送跌倒报警通知
+                    import time
+                    message = f"【跌倒检测报警】\n时间: {time.strftime('%Y-%m-%d %H:%M:%S')}\n状态: 检测到人员跌倒\n请及时查看监控画面！"
+                    notifier.send_notification(message, notification_config)
                 else:
                     status = "Normal"
                     color = (0, 255, 0)  # 绿色正常
