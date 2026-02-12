@@ -97,23 +97,48 @@ pip install pyinstaller
 rmdir /s /q "dist" 2>nul
 rmdir /s /q "build" 2>nul
 
-# 重新打包
+# 重新打包（使用 spec 文件）
 pyinstaller fall_detection.spec
+```
+
+### 或者直接使用命令行打包
+```bash
+# 清理旧的打包文件
+rmdir /s /q "dist" 2>nul
+rmdir /s /q "build" 2>nul
+
+# 直接打包 main2.py
+pyinstaller --onefile --add-data "yolo11l.pt;." --add-data "notification.py;." --add-data "config.py;." --name fall_detection main2.py
 ```
 
 ### 打包结果
 生成的可执行文件位于：
-- **单文件版本**：`dist/FallDetectionSystem.exe`
-- **文件夹版本**：`dist/FallDetectionSystem/FallDetectionSystem.exe`
+- **单文件版本**：`dist/fall_detection.exe`
 
 ### 运行说明
 1. 在 OBS Studio 中启动虚拟摄像机
-2. 双击 `FallDetectionSystem.exe` 运行
+2. 双击 `fall_detection.exe` 运行
 3. 程序会自动加载模型并开始检测
 4. 按 `q` 键退出程序
 
+### 截图保存路径配置
+在 `config.py` 中可以配置截图保存路径，避免占用C盘空间：
+
+```python
+# 保存到D盘（推荐）
+screenshot_path = "D:\\screenshots"
+
+# 或保存到其他盘符
+# screenshot_path = "E:\\monitor\\screenshots"
+
+# 或使用默认路径（exe所在目录）
+# screenshot_path = None
+```
+
 ### 注意事项
-- 打包过程会包含 `yolo11l-pose.pt` 模型文件，无需单独下载
+- 打包过程会包含 `yolo11l.pt` 模型文件，无需单独下载
 - 首次运行可能需要较长时间加载模型
 - 如果运行卡顿，可以调整 OBS 的输出分辨率
 - 如需使用通知功能，请确保 `config.py` 文件与可执行文件在同一目录
+- 截图默认保存到D盘，可在 `config.py` 中修改 `screenshot_path` 配置
+- 打包后首次运行会自动创建截图保存目录

@@ -14,7 +14,7 @@ def get_app_path():
 
 # 1. 加载 YOLO11 姿态检测模型
 app_path = get_app_path()
-model_path = os.path.join(app_path, 'yolo11l-pose.pt')
+model_path = os.path.join(app_path, 'yolo11l.pt')
 print(f"正在加载模型: {model_path}")
 
 model = YOLO(model_path)
