@@ -66,12 +66,14 @@ except ImportError:
 # 3. 尝试打开摄像头，支持多种后端
 print("正在尝试打开摄像头...")
 
-# 优先使用 OBS 虚拟摄像头（索引 1），如果失败则尝试物理摄像头（索引 0）
-camera_indices = [1, 0]  # 1=虚拟摄像头, 0=物理摄像头
+# 优先使用物理USB摄像头（索引 0），如果失败则尝试虚拟摄像头（索引 1）
+camera_indices = [0, 1]  # 0=USB物理摄像头, 1=虚拟摄像头
 
 cap = None
 for camera_idx in camera_indices:
     print(f"尝试打开摄像头 {camera_idx}...")
+    
+    # 先尝试默认方式打开
     cap = cv2.VideoCapture(camera_idx)
     if cap.isOpened():
         ret, frame = cap.read()
@@ -80,7 +82,20 @@ for camera_idx in camera_indices:
             break
         else:
             cap.release()
+    
+    # 失败了再尝试用DSHOW后端打开
+    print(f"默认方式打开失败，尝试用DSHOW后端打开摄像头 {camera_idx}...")
+    cap = cv2.VideoCapture(camera_idx, cv2.CAP_DSHOW)
+    if cap.isOpened():
+        ret, frame = cap.read()
+        if ret:
+            print(f"成功! 使用摄像头 {camera_idx} (DSHOW后端)")
+            break
+        else:
+            cap.release()
+    
     cap = None
+    print(f"摄像头 {camera_idx} 打开失败，尝试下一个...")
 
 if cap is None or not cap.isOpened():
     print("\n错误: 无法打开摄像头!")
@@ -100,47 +115,6 @@ print("按 'q' 键退出程序\n")
 
 last_alert_time = 0
 alert_interval = 60  # 60秒内不重复报警
-
-def send_feishu_image(webhook_url, image_path, text_message):
-    """发送图片到飞书"""
-    try:
-        # 读取图片并编码为 base64
-        with open(image_path, 'rb') as f:
-            import base64
-            image_data = base64.b64encode(f.read()).decode('utf-8')
-        
-        # 飞书图片消息格式
-        data = {
-            "msg_type": "image",
-            "content": {
-                "image_key": f"image_{int(time.time())}"
-            }
-        }
-        
-        # 注意：飞书 Webhook 不直接支持上传图片
-        # 这里使用简化的方式，发送文本消息并提示查看本地截图
-        data = {
-            "msg_type": "text",
-            "content": {
-                "text": text_message
-            }
-        }
-        
-        response = requests.post(webhook_url, json=data, timeout=10)
-        if response.status_code == 200:
-            result = response.json()
-            if result.get('code') == 0:
-                print(f"飞书通知发送成功")
-                return True
-            else:
-                print(f"飞书通知发送失败: {result.get('msg', '未知错误')}")
-                return False
-        else:
-            print(f"飞书通知发送失败: {response.text}")
-            return False
-    except Exception as e:
-        print(f"飞书通知发送异常: {e}")
-        return False
 
 while cap.isOpened():
     success, frame = cap.read()
@@ -192,15 +166,7 @@ while cap.isOpened():
             # 构建报警消息
             message = f"【人物检测报警】\n\n时间: {time.strftime('%Y-%m-%d %H:%M:%S')}\n状态: 检测到 {person_count} 人\n\n截图已保存到: {screenshot_path}\n\n请及时查看监控画面！"
             
-            # 发送通知到飞书
-            if notification_config.get('feishu_webhook'):
-                send_feishu_image(
-                    notification_config['feishu_webhook'],
-                    screenshot_path,
-                    message
-                )
-            
-            # 发送其他通知方式
+            # 发送报警通知
             notifier.send_notification(message, notification_config)
             
             last_alert_time = current_time
