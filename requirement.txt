@@ -14,4 +14,6 @@ numpy
 requests
 
 # 性能监控 (可选，用于查看旧电脑 CPU 占用)
-psutil
+psutilfastapi
+uvicorn[standard]
+websockets
